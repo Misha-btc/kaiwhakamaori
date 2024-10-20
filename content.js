@@ -27,13 +27,17 @@ function getElementContent(element) {
 
 function updateElementContent(element, value) {
   if (element.isContentEditable) {
-    element.innerText = value;
-    element.dispatchEvent(new Event('input', { bubbles: true }));
-    element.dispatchEvent(new Event('change', { bubbles: true }));
+    const textContainer = element.querySelector('[data-text="true"]');
+    if (textContainer) {
+      textContainer.textContent = value;
+    } else {
+      // Если не найден специфический элемент, используем предыдущий метод
+      element.innerText = value;
+    }
   } else {
     element.value = value;
-    element.dispatchEvent(new Event('input', { bubbles: true }));
-    element.dispatchEvent(new Event('change', { bubbles: true }));
   }
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+  element.dispatchEvent(new Event('change', { bubbles: true }));
   console.log("Содержимое активного элемента изменено на:", value);
 }
