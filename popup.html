@@ -2,17 +2,17 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Punctuation</title>
-
+  <title>Translator</title>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <h1>MAIN</h1>
+  <h1>Translator</h1>
   <div id="apiKeyInputContainer">
     <input type="text" id="apiKeyInput" placeholder="Enter API key">
-    <button id="saveButton">Save</button>
+    <button id="saveButton">save key</button>
   </div>
-  <button id="deleteButton">delete</button>
-  <p id="apiKeyDisplay" style="display: none;">Saved: <span id="apiKeyValue"></span></p>
+  <button id="deleteButton">delete key</button>
+  <p id="apiKeyDisplay" style="display: none;">Saved: <span id="apiKeyValue" title=""></span></p>
   <script src="popup.js"></script>
 </body>
 </html>
