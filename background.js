@@ -1,4 +1,3 @@
-
 chrome.commands.onCommand.addListener((command) => {
   if (command === "fix-punctuation") {
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
@@ -14,8 +13,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
     (async () => {
       try {
-        const result = await chrome.storage.sync.get(['apiKey']);
+        const result = await chrome.storage.sync.get(['apiKey', 'targetLang']);
         const apiKey = result.apiKey;
+        const targetLang = result.targetLang || 'английский'; // Используем 'английский' по умолчанию
 
         if (!apiKey) {
           throw new Error("API ключ не найден. Пожалуйста, сохраните ключ в настройках расширения.");
@@ -28,9 +28,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
+            model: 'gpt-4o-mini-2024-07-18',
             messages: [
-              { role: "system", content: "Вы - эксперт по переводу текста с русского на английский. Переведите следующий текст:" },
+              { role: "system", content: `Вы - эксперт по переводу текста на ${targetLang}. Переведите следующий текст исправте ошибки пунктуации, а также добавте эмодзи по смыслу:` },
               { role: "user", content: message.text }
             ],
             max_tokens: 150
