@@ -69,3 +69,13 @@ button:hover {
   font-size: 14px;
   margin-top: 10px;
 }
+
+#emojiToggleContainer {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+#emojiToggle {
+  margin-left: 10px;
+}

@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const targetLangDisplay = document.getElementById('targetLangDisplay');
   const targetLangValue = document.getElementById('targetLangValue');
   const deleteButton = document.getElementById('deleteButton');
+  const emojiToggle = document.getElementById('emojiToggle');
 
   console.log('DOM загружен');
 
@@ -55,5 +56,13 @@ document.addEventListener('DOMContentLoaded', function() {
       apiKeyInput.value = '';
       targetLangInput.value = '';
     });
+  });
+
+  chrome.storage.sync.get(['useEmoji'], function(result) {
+    emojiToggle.checked = result.useEmoji !== false;
+  });
+
+  emojiToggle.addEventListener('change', function() {
+    chrome.storage.sync.set({useEmoji: emojiToggle.checked});
   });
 });

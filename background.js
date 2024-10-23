@@ -13,9 +13,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
     (async () => {
       try {
-        const result = await chrome.storage.sync.get(['apiKey', 'targetLang']);
+        const result = await chrome.storage.sync.get(['apiKey', 'targetLang', 'useEmoji']);
         const apiKey = result.apiKey;
         const targetLang = result.targetLang || 'английский'; // Используем 'английский' по умолчанию
+        const useEmoji = result.useEmoji !== false;
 
         if (!apiKey) {
           throw new Error("API ключ не найден. Пожалуйста, сохраните ключ в настройках расширения.");
@@ -30,7 +31,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           body: JSON.stringify({
             model: 'gpt-4o-mini-2024-07-18',
             messages: [
-              { role: "system", content: `Вы - эксперт по переводу текста на ${targetLang}. Переведите следующий текст исправте ошибки пунктуации, а также добавте эмодзи по смыслу:` },
+              { role: "system", content: `Вы - эксперт по переводу текста на ${targetLang}. Переведите следующий текст, исправьте ошибки пунктуации${useEmoji ? ', а также добавьте эмодзи по смыслу' : ''}:` },
               { role: "user", content: message.text }
             ],
             max_tokens: 150
