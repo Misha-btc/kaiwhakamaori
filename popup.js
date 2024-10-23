@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const targetLangValue = document.getElementById('targetLangValue');
   const deleteButton = document.getElementById('deleteButton');
   const emojiToggle = document.getElementById('emojiToggle');
+  const areaSelectionToggle = document.getElementById('areaSelectionToggle');
 
   console.log('DOM загружен');
 
@@ -64,5 +65,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
   emojiToggle.addEventListener('change', function() {
     chrome.storage.sync.set({useEmoji: emojiToggle.checked});
+  });
+// SELECTION
+  chrome.storage.sync.get(['useAreaSelection'], function(result) {
+    areaSelectionToggle.checked = result.useAreaSelection !== false;
+  });
+
+  areaSelectionToggle.addEventListener('change', function() {
+    chrome.storage.sync.set({useAreaSelection: areaSelectionToggle.checked});
   });
 });

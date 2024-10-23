@@ -22,6 +22,12 @@
                 "mac": "Command+K"
             },
             "description": "Fix punctuation"
+        },
+        "select-area": {
+            "suggested_key": {
+                "mac": "Command+L"
+            },
+            "description": "Select area"
         }
     },
     "background": {
@@ -30,7 +36,7 @@
     "content_scripts": [
         {
             "matches": ["<all_urls>"],
-            "js": ["content.js"]
+            "js": ["content.js", "content_script.js"]
         }
     ]
 }

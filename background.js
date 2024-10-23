@@ -3,6 +3,10 @@ chrome.commands.onCommand.addListener((command) => {
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
       chrome.tabs.sendMessage(tabs[0].id, {command: "fix-punctuation"});
     });
+  } else if (command === "select-area") {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      chrome.tabs.sendMessage(tabs[0].id, {command: "select-area"});
+    });
   }
 });
 
