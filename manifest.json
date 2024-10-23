@@ -7,7 +7,8 @@
         "activeTab",
         "storage",
         "scripting",
-        "commands"
+        "commands",
+        "downloads"
     ],
     "host_permissions": [
         "https://api.openai.com/*"
@@ -22,6 +23,12 @@
                 "mac": "Command+K"
             },
             "description": "Fix punctuation"
+        },
+        "capture-screenshot": {
+            "suggested_key": {
+                "mac": "Command+I"
+            },
+            "description": "Capture screenshot"
         }
     },
     "background": {
