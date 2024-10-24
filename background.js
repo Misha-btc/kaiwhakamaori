@@ -5,13 +5,24 @@ chrome.commands.onCommand.addListener((command) => {
     });
   } else if (command === "capture-screenshot") {
     chrome.tabs.captureVisibleTab(null, {format: 'png'}, function(dataUrl) {
-      console.log('Скриншот сделан:', dataUrl);
-      
-      // Сохранение скриншота
-      chrome.downloads.download({
-        url: dataUrl,
-        filename: 'screenshot.png',
-        saveAs: true
+      chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          command: "get-crop-area"
+        }, function(response) {
+          if (response && response.area) {
+            crop(dataUrl, response.area, window.devicePixelRatio, true, 'png', function(croppedDataUrl) {
+              chrome.tabs.sendMessage(tabs[0].id, {
+                command: "display-screenshot",
+                screenshotUrl: croppedDataUrl
+              });
+            });
+          } else {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              command: "display-screenshot",
+              screenshotUrl: dataUrl
+            });
+          }
+        });
       });
     });
   }
@@ -70,5 +81,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
 
     return true; // Указывает, что ответ асинхронный
+  }
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.command === "save-cropped-image") {
+    const dataUrl = message.dataUrl;
+    
+    chrome.downloads.download({
+      url: dataUrl,
+      filename: 'cropped_screenshot.png',
+      saveAs: true
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error("Ошибка при сохранении изображения:", chrome.runtime.lastError);
+      } else {
+        console.log("Изображение успешно сохранено, ID загрузки:", downloadId);
+      }
+    });
   }
 });
