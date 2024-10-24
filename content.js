@@ -1,14 +1,19 @@
-// Слушаем команду "fix-punctuation"
+// Слушатель сообщений для команды "fix-punctuation"
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.command === "fix-punctuation") {
     console.log("Получена команда fix-punctuation");
     
+    // Получаем активный элемент на странице
     const activeElement = document.activeElement;
 
+    // Проверяем, является ли активный элемент текстовым полем или редактируемым содержимым
     if (activeElement && (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA" || activeElement.isContentEditable)) {
+      // Получаем содержимое активного элемента
       const inputContent = getElementContent(activeElement);
+      // Отправляем сообщение в background script для исправления пунктуации
       chrome.runtime.sendMessage({type: "FIX_PUNCTUATION", text: inputContent}, (response) => {
         if (response.success) {
+          // Если исправление успешно, обновляем содержимое элемента
           updateElementContent(activeElement, response.fixedText);
         } else {
           console.error("Ошибка при исправлении пунктуации:", response.error);
@@ -18,45 +23,48 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Функция для получения содержимого элемента
 function getElementContent(element) {
+  // Если элемент редактируемый, возвращаем его innerText
   if (element.isContentEditable) {
     return element.innerText;
   }
+  // Иначе возвращаем значение элемента
   return element.value;
 }
 
+// Функция для обновления содержимого элемента
 function updateElementContent(element, value) {
   if (element.isContentEditable) {
+    // Ищем специфический контейнер для текста
     const textContainer = element.querySelector('[data-text="true"]');
     if (textContainer) {
       textContainer.textContent = value;
     } else {
-      // Если не найден специфический элемент, используем предыдущий метод
+      // Если специфический контейнер не найден, обновляем innerText
       element.innerText = value;
     }
   } else {
+    // Для обычных input и textarea элементов обновляем value
     element.value = value;
   }
+  // Генерируем события input и change для обновления состояния элемента
   element.dispatchEvent(new Event('input', { bubbles: true }));
   element.dispatchEvent(new Event('change', { bubbles: true }));
   console.log("Содержимое активного элемента изменено на:", value);
 }
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.command === "start-lens") {
-    const lens = document.createElement('msc-lens');
-    lens.addEventListener('capture', (event) => {
-      const canvas = event.detail;
-      canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        chrome.runtime.sendMessage({command: "download-image", url: url});
-      });
-    });
-    document.body.appendChild(lens);
-  }
-});
 
+
+//////////////////////////////////////////////////////////// crop
+
+
+// Слушатель сообщений для отображения скриншота
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.command === "display-screenshot") {
+    // Блокируем прокрутку страницы
+    document.body.style.overflow = 'hidden';
+    
+    // Создаем оверлей для отображения скриншота
     const overlay = document.createElement('div');
     overlay.style.cssText = `
       position: fixed;
@@ -71,6 +79,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       align-items: center;
     `;
 
+    // Создаем canvas для отображения и редактирования скриншота
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
@@ -81,22 +90,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     };
     img.src = message.screenshotUrl;
 
+    // Стилизуем canvas
     canvas.style.cssText = `
-      max-width: 90%;
-      max-height: 90%;
+      max-width: 100%;
+      max-height: 100%;
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     `;
 
+    // Добавляем canvas в оверлей и оверлей на страницу
     overlay.appendChild(canvas);
     document.body.appendChild(overlay);
 
+    // Закрываем оверлей при клике
     overlay.addEventListener('click', () => {
       document.body.removeChild(overlay);
     });
 
+    // Переменные для отслеживания выделения области
     let isDrawing = false;
     let startX, startY, endX, endY;
 
+    // Обработчик начала выделения
     canvas.addEventListener('mousedown', (e) => {
       isDrawing = true;
       [startX, startY] = getMousePos(canvas, e);
@@ -104,28 +118,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       endY = startY;
     });
 
+    // Обработчик перемещения мыши при выделении
     canvas.addEventListener('mousemove', (e) => {
       if (!isDrawing) return;
       [endX, endY] = getMousePos(canvas, e);
       drawSelection();
     });
 
+    // Обработчик окончания выделения
     canvas.addEventListener('mouseup', async () => {
       isDrawing = false;
+      // Обрезаем выделенную область
       const croppedDataUrl = cropCanvas(canvas, startX, startY, endX, endY);
       console.log('Выделенная область сохранена:', croppedDataUrl);
       
+      // Запрашиваем у пользователя текст для сохранения
       const inputText = await showTextInputModal();
       
+      // Отправляем сообщение для сохранения обрезанного изображения
       chrome.runtime.sendMessage({
         command: "save-cropped-image", 
         dataUrl: croppedDataUrl,
         text: inputText
       });
       
+      // Закрываем оверлей
       document.body.removeChild(overlay);
     });
 
+    // Функция для получения позиции мыши относительно canvas
     function getMousePos(canvas, evt) {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
@@ -136,6 +157,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       ];
     }
 
+    // Функция для отрисовки выделения на canvas
     function drawSelection() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
@@ -148,6 +170,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       );
     }
 
+    // Функция для обрезки canvas
     function cropCanvas(canvas, startX, startY, endX, endY) {
       const croppedCanvas = document.createElement('canvas');
       const ctx = croppedCanvas.getContext('2d');
@@ -165,6 +188,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return croppedCanvas.toDataURL('image/png');
     }
   }
+  // Восстанавливаем прокрутку страницы
+  document.body.style.overflow = 'auto';
 });
 
 function showTextInputModal() {
