@@ -84,12 +84,84 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+
+
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.command === "save-cropped-image") {
     const dataUrl = message.dataUrl;
     const text = message.text;
     
     const filename = `cropped_screenshot_${text.substring(0, 20)}.png`;
+
+    (async () => {
+      try {
+        const result = await chrome.storage.sync.get(['apiKey']);
+        const apiKey = result.apiKey;
+
+        if (!apiKey) {
+          throw new Error("API ключ не найден. Пожалуйста, сохраните ключ в настройках расширения.");
+        }
+
+        // Преобразуем dataUrl в base64
+        const base64Image = dataUrl.split(',')[1];
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: message.text
+                  },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:image/png;base64,${base64Image}`
+                    }
+                  }
+                ]
+              },
+              {
+                role: "system",
+                content: `Описываешь на русском языке содержимое изображения в нескольких предложениях`
+              }
+            ],
+            max_tokens: 150
+          })
+        });
+
+        const data = await response.json();
+        console.log("Ответ от API:", data);
+
+        if (response.ok) {
+          console.log(data.choices[0].message.content);
+          sendResponse({
+            success: true,
+            fixedText: data.choices[0].message.content,
+            id: data.id,
+            object: data.object,
+            created: data.created,
+            model: data.model,
+            usage: data.usage
+          });
+        } else {
+          console.error("Ошибка в ответе API:", data.error.message);
+          sendResponse({ success: false, error: data.error.message });
+        }
+      } catch (error) {
+        console.error("Ошибка при работе с API OpenAI:", error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
     
     chrome.downloads.download({
       url: dataUrl,
