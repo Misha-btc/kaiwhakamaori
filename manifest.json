@@ -14,7 +14,7 @@
         "https://api.openai.com/*"
     ],
     "action": {
-        "default_icon": "M.png",
+        "default_icon": "X.COM_1.png",
         "default_popup": "popup.html"
     },
     "commands": {

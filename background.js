@@ -87,10 +87,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.command === "save-cropped-image") {
     const dataUrl = message.dataUrl;
+    const text = message.text;
+    
+    const filename = `cropped_screenshot_${text.substring(0, 20)}.png`;
     
     chrome.downloads.download({
       url: dataUrl,
-      filename: 'cropped_screenshot.png',
+      filename: filename,
       saveAs: true
     }, (downloadId) => {
       if (chrome.runtime.lastError) {

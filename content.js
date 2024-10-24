@@ -110,11 +110,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       drawSelection();
     });
 
-    canvas.addEventListener('mouseup', () => {
+    canvas.addEventListener('mouseup', async () => {
       isDrawing = false;
       const croppedDataUrl = cropCanvas(canvas, startX, startY, endX, endY);
       console.log('Выделенная область сохранена:', croppedDataUrl);
-      chrome.runtime.sendMessage({command: "save-cropped-image", dataUrl: croppedDataUrl});
+      
+      const inputText = await showTextInputModal();
+      
+      chrome.runtime.sendMessage({
+        command: "save-cropped-image", 
+        dataUrl: croppedDataUrl,
+        text: inputText
+      });
+      
+      document.body.removeChild(overlay);
     });
 
     function getMousePos(canvas, evt) {
@@ -157,3 +166,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   }
 });
+
+function showTextInputModal() {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    z-index: 10000;
+  `;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Введите текст';
+  input.style.cssText = `
+    width: 100%;
+    padding: 5px;
+    margin-bottom: 10px;
+  `;
+
+  const button = document.createElement('button');
+  button.textContent = 'Сохранить';
+  button.style.cssText = `
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+  `;
+
+  modal.appendChild(input);
+  modal.appendChild(button);
+  document.body.appendChild(modal);
+
+  return new Promise((resolve) => {
+    button.addEventListener('click', () => {
+      const text = input.value;
+      document.body.removeChild(modal);
+      resolve(text);
+    });
+
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        button.click();
+      }
+    });
+  });
+}
