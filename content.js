@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Отправляем сообщение в background script для исправления пунктуации
       chrome.runtime.sendMessage({type: "FIX_PUNCTUATION", text: inputContent}, (response) => {
         if (response.success) {
-          // Если исправление успешно, обновляем содержимое элемента
+          // Если исправле��е успешно, обновляем содержимое элемента
           updateElementContent(activeElement, response.fixedText);
         } else {
           console.error("Ошибка при исправлении пунктуации:", response.error);
@@ -45,7 +45,7 @@ function updateElementContent(element, value) {
       element.innerText = value;
     }
   } else {
-    // Для обычных input и textarea элементов обновляем value
+    // Для обычных input и textarea элементов обновле�� value
     element.value = value;
   }
   // Генерируем события input и change для обновления состояния элемента
@@ -92,8 +92,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // Стилизуем canvas
     canvas.style.cssText = `
-      max-width: 100%;
-      max-height: 100%;
+      max-width: 90%;
+      max-height: 90%;
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     `;
 
@@ -101,10 +101,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     overlay.appendChild(canvas);
     document.body.appendChild(overlay);
 
-    // Закрываем оверлей при клике
-    overlay.addEventListener('click', () => {
-      document.body.removeChild(overlay);
-    });
+
 
     // Переменные для отслеживания выделения области
     let isDrawing = false;
@@ -161,13 +158,73 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     function drawSelection() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
-      ctx.fillStyle = 'rgba(0, 0, 255, 0.3)';
-      ctx.fillRect(
-        Math.min(startX, endX),
-        Math.min(startY, endY),
-        Math.abs(endX - startX),
-        Math.abs(endY - startY)
-      );
+      
+      // Рисуем пунктирную белую рамку с закругленными углами, кроме ближайшего к курсору
+      ctx.strokeStyle = 'white';
+      ctx.setLineDash([5, 5]); // Устанавливаем пунктирный стиль линии
+      ctx.lineWidth = 2;
+      
+      const x = Math.min(startX, endX);
+      const y = Math.min(startY, endY);
+      const width = Math.abs(endX - startX);
+      const height = Math.abs(endY - startY);
+      const radius = 30; // Большой радиус закругления углов
+      
+      // Определяем ближайший к курсору угол
+      const nearestCorner = getNearestCorner(endX, endY, x, y, width, height);
+      
+      ctx.beginPath();
+      if (nearestCorner !== 'topLeft') {
+        ctx.moveTo(x + radius, y);
+      } else {
+        ctx.moveTo(x, y);
+      }
+      if (nearestCorner !== 'topRight') {
+        ctx.arcTo(x + width, y, x + width, y + height, radius);
+      } else {
+        ctx.lineTo(x + width, y);
+      }
+      if (nearestCorner !== 'bottomRight') {
+        ctx.arcTo(x + width, y + height, x, y + height, radius);
+      } else {
+        ctx.lineTo(x + width, y + height);
+      }
+      if (nearestCorner !== 'bottomLeft') {
+        ctx.arcTo(x, y + height, x, y, radius);
+      } else {
+        ctx.lineTo(x, y + height);
+      }
+      if (nearestCorner !== 'topLeft') {
+        ctx.arcTo(x, y, x + width, y, radius);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      
+      // Сбрасываем стиль линии
+      ctx.setLineDash([]);
+    }
+
+    // Функция для определения ближайшего к курсору угла
+    function getNearestCorner(cursorX, cursorY, rectX, rectY, rectWidth, rectHeight) {
+      const corners = {
+        topLeft: [rectX, rectY],
+        topRight: [rectX + rectWidth, rectY],
+        bottomRight: [rectX + rectWidth, rectY + rectHeight],
+        bottomLeft: [rectX, rectY + rectHeight]
+      };
+
+      let nearestCorner = 'topLeft';
+      let minDistance = Infinity;
+
+      for (const [corner, [x, y]] of Object.entries(corners)) {
+        const distance = Math.sqrt(Math.pow(cursorX - x, 2) + Math.pow(cursorY - y, 2));
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestCorner = corner;
+        }
+      }
+
+      return nearestCorner;
     }
 
     // Функция для обрезки canvas
@@ -192,8 +249,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   document.body.style.overflow = 'auto';
 });
 
+// Глобальная переменная для хранения текущего модального окна
+let currentModal = null;
+
+// Функция для отображения модального окна с полем ввода текста
 function showTextInputModal() {
+  // Если уже есть открытое модальное окно, удаляем его
+  if (currentModal) {
+    document.body.removeChild(currentModal);
+  }
+
+  // Создаем элемент div для модального окна
   const modal = document.createElement('div');
+  // Устанавливаем стили для модального окна
   modal.style.cssText = `
     position: fixed;
     top: 50%;
@@ -230,10 +298,14 @@ function showTextInputModal() {
   modal.appendChild(button);
   document.body.appendChild(modal);
 
+  // Сохраняем ссылку на текущее модальное окно
+  currentModal = modal;
+
   return new Promise((resolve) => {
     button.addEventListener('click', () => {
       const text = input.value;
       document.body.removeChild(modal);
+      currentModal = null; // Очищаем ссылку на текущее модальное окно
       resolve(text);
     });
 
