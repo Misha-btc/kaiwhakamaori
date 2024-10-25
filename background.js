@@ -90,10 +90,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.command === "save-cropped-image") {
     const dataUrl = message.dataUrl;
-    const text = message.text;
     
-    const filename = `cropped_screenshot_${text.substring(0, 20)}.png`;
-
     (async () => {
       try {
         const result = await chrome.storage.sync.get(['apiKey']);
@@ -132,13 +129,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               },
               {
                 role: "system",
-                content: `Описываешь на русском языке содержимое изображения в нескольких предложениях`
+                content: `Описываешь на русском языке содержимое изображения, пытаешься определить что или кто на изображении и что это может значить`
               }
             ],
             max_tokens: 150
           })
         });
-
         const data = await response.json();
         console.log("Ответ от API:", data);
 
@@ -162,17 +158,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, error: error.message });
       }
     })();
-    
-    chrome.downloads.download({
-      url: dataUrl,
-      filename: filename,
-      saveAs: true
-    }, (downloadId) => {
-      if (chrome.runtime.lastError) {
-        console.error("Ошибка при сохранении изображения:", chrome.runtime.lastError);
-      } else {
-        console.log("Изображение успешно сохранено, ID загрузки:", downloadId);
-      }
-    });
+
+    return true; // Указывает, что ответ асинхронный
   }
 });

@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Отправляем сообщение в background script для исправления пунктуации
       chrome.runtime.sendMessage({type: "FIX_PUNCTUATION", text: inputContent}, (response) => {
         if (response.success) {
-          // Если исправле��е успешно, обновляем содержимое элемента
+          // Если исправле успешно, обновляем содержимое элемента
           updateElementContent(activeElement, response.fixedText);
         } else {
           console.error("Ошибка при исправлении пунктуации:", response.error);
@@ -45,7 +45,7 @@ function updateElementContent(element, value) {
       element.innerText = value;
     }
   } else {
-    // Для обычных input и textarea элементов обновле�� value
+    // Для обычных input и textarea элементов обновле value
     element.value = value;
   }
   // Генерируем события input и change для обновления состояния элемента
@@ -101,13 +101,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     overlay.appendChild(canvas);
     document.body.appendChild(overlay);
 
+    // Функция для закрытия оверлея
+    const closeOverlay = () => {
+      document.body.removeChild(overlay);
+      document.body.style.overflow = 'auto';
+      document.removeEventListener('keydown', handleEscKey);
+    };
 
+    // Обработчик нажатия клавиши Esc
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape') {
+        closeOverlay();
+      }
+    };
+
+    // Добавляем слушатель события для клавиши Esc
+    document.addEventListener('keydown', handleEscKey);
 
     // Переменные для отслеживания выделения области
     let isDrawing = false;
     let startX, startY, endX, endY;
 
-    // Обработчик начала выделения
+    // Обр��ботчик начала выделения
     canvas.addEventListener('mousedown', (e) => {
       isDrawing = true;
       [startX, startY] = getMousePos(canvas, e);
@@ -124,23 +139,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // Обработчик окончания выделения
     canvas.addEventListener('mouseup', async () => {
-      isDrawing = false;
-      // Обрезаем выделенную область
-      const croppedDataUrl = cropCanvas(canvas, startX, startY, endX, endY);
-      console.log('Выделенная область сохранена:', croppedDataUrl);
-      
-      // Запрашиваем у пользователя текст для сохранения
-      const inputText = await showTextInputModal();
-      
-      // Отправляем сообщение для сохранения обрезанного изображения
-      chrome.runtime.sendMessage({
-        command: "save-cropped-image", 
-        dataUrl: croppedDataUrl,
-        text: inputText
-      });
-      
-      // Закрываем оверлей
-      document.body.removeChild(overlay);
+      if (document.body.contains(overlay)) {
+        isDrawing = false;
+        // Обрезаем выделенную область
+        const croppedDataUrl = cropCanvas(canvas, startX, startY, endX, endY);
+        
+        // Запрашиваем у пользователя текст для сохранения
+        await showTextInputModal(croppedDataUrl);
+        
+        // Закрываем оверлей
+        closeOverlay();
+      }
     });
 
     // Функция для получения позиции мыши относительно canvas
@@ -245,7 +254,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return croppedCanvas.toDataURL('image/png');
     }
   }
-  // Восстанавливаем прокрутку страницы
+  // Восстанавливаем прокутку страницы
   document.body.style.overflow = 'auto';
 });
 
@@ -253,15 +262,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 let currentModal = null;
 
 // Функция для отображения модального окна с полем ввода текста
-function showTextInputModal() {
-  // Если уже есть открытое модальное окно, удаляем его
+function showTextInputModal(croppedDataUrl) {
   if (currentModal) {
     document.body.removeChild(currentModal);
   }
 
-  // Создаем элемент div для модального окна
   const modal = document.createElement('div');
-  // Устанавливаем стили для модального окна
   modal.style.cssText = `
     position: fixed;
     top: 50%;
@@ -272,19 +278,28 @@ function showTextInputModal() {
     border-radius: 5px;
     box-shadow: 0 0 10px rgba(0,0,0,0.3);
     z-index: 10000;
+    width: 300px;
+    max-height: 80vh;
+    overflow-y: auto;
+  `;
+
+  const inputContainer = document.createElement('div');
+  inputContainer.style.cssText = `
+    display: flex;
+    margin-bottom: 10px;
   `;
 
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = 'Введите текст';
   input.style.cssText = `
-    width: 100%;
+    flex-grow: 1;
     padding: 5px;
-    margin-bottom: 10px;
+    margin-right: 5px;
   `;
 
   const button = document.createElement('button');
-  button.textContent = 'Сохранить';
+  button.innerHTML = '&#10148;';
   button.style.cssText = `
     padding: 5px 10px;
     background-color: #4CAF50;
@@ -294,25 +309,76 @@ function showTextInputModal() {
     cursor: pointer;
   `;
 
-  modal.appendChild(input);
-  modal.appendChild(button);
+  const responseArea = document.createElement('div');
+  responseArea.style.cssText = `
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #333333;
+    color: white;
+    border-radius: 3px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    display: none;
+  `;
+
+  inputContainer.appendChild(input);
+  inputContainer.appendChild(button);
+
+  modal.appendChild(inputContainer);
+  modal.appendChild(responseArea);
   document.body.appendChild(modal);
 
-  // Сохраняем ссылку на текущее модальное окно
   currentModal = modal;
 
+  // Функция для закрытия модального окна
+  const closeModal = () => {
+    if (currentModal) {
+      document.body.removeChild(currentModal);
+      currentModal = null;
+      document.removeEventListener('keydown', handleEscKey);
+    }
+  };
+
+  // Обработчик нажатия клавиши Esc
+  const handleEscKey = (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+  };
+
+  // Добавляем слушатель события для клавиши Esc
+  document.addEventListener('keydown', handleEscKey);
+
   return new Promise((resolve) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       const text = input.value;
-      document.body.removeChild(modal);
-      currentModal = null; // Очищаем ссылку на текущее модальное окно
-      resolve(text);
+      responseArea.style.display = 'block';
+      responseArea.textContent = 'Обработка запроса...';
+      
+      try {
+        const response = await sendMessageToBackground(croppedDataUrl, text);
+        responseArea.textContent = response.fixedText || 'Ошибка: ' + response.error;
+      } catch (error) {
+        responseArea.textContent = 'Произошла ошибка: ' + error.message;
+      }
     });
 
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         button.click();
       }
+    });
+  });
+}
+
+async function sendMessageToBackground(croppedDataUrl, text) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({
+      command: "save-cropped-image", 
+      dataUrl: croppedDataUrl,
+      text: text
+    }, (response) => {
+      resolve(response);
     });
   });
 }
